@@ -9,10 +9,10 @@ scrape_configs:
 
   - job_name: 'snmp'
     scrape_interval: 60s
-    scrape_timeout: 30s   # biar router besar / banyak interface tidak timeout
+    scrape_timeout: 30s   
     static_configs:
       - targets:
-          - 192.168.20.203        # IP router / IP VPN
+          - 192.168.20.203       
     metrics_path: /snmp
     params:
       module: [if_mib]
