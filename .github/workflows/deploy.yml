@@ -3,7 +3,7 @@ name: Auto Deploy to Server
 on:
   push:
     branches:
-      - main  # berjalan otomatis tiap kali push ke main branch
+      - main  
 
 jobs:
   deploy:
@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/ubuntu/monitoring
+            cd /home/ubuntu/monitoring 
             sudo git pull origin main
             sudo docker compose down
             sudo docker compose up -d --build
