@@ -1,0 +1,252 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ========================================
+  # 1. SYSTEM LOGS (Syslog, Messages, dll)
+  # ========================================
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          host: seamolec-server
+          environment: production
+          __path__: /var/log/syslog
+
+  # ========================================
+  # 2. AUTHENTICATION LOGS (SSH, Login, Sudo)
+  # ========================================
+  - job_name: auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth
+          host: seamolec-server
+          log_type: security
+          __path__: /var/log/auth.log
+    pipeline_stages:
+      # Highlight failed logins
+      - match:
+          selector: '{job="auth"} |~ "Failed password"'
+          stages:
+            - labels:
+                auth_status: failed
+      # Highlight successful logins
+      - match:
+          selector: '{job="auth"} |~ "Accepted password"'
+          stages:
+            - labels:
+                auth_status: success
+      # Track sudo commands
+      - match:
+          selector: '{job="auth"} |~ "sudo:"'
+          stages:
+            - labels:
+                auth_type: sudo
+
+  # ========================================
+  # 3. KERNEL LOGS
+  # ========================================
+  - job_name: kernel
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: kernel
+          host: seamolec-server
+          __path__: /var/log/kern.log
+
+  # ========================================
+  # 4. DOCKER CONTAINER LOGS
+  # ========================================
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: seamolec-server
+          __path__: /var/lib/docker/containers/*/*log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            container_name: attrs.name
+      - labels:
+          container_name:
+          stream:
+      - output:
+          source: output
+
+  # ========================================
+  # 5. NGINX LOGS (jika ada)
+  # ========================================
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: access
+          host: seamolec-server
+          __path__: /var/log/nginx/access.log
+    pipeline_stages:
+      # Parse nginx access log format
+      - regex:
+          expression: '^(?P<remote_addr>[\w\.]+) - (?P<remote_user>[^ ]*) \[(?P<time_local>.*)\] "(?P<method>[^ ]*) (?P<request>[^ ]*) (?P<protocol>[^ ]*)" (?P<status>[\d]+) (?P<body_bytes_sent>[\d]+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)"'
+      - labels:
+          method:
+          status:
+          remote_addr:
+      # Alert on 4xx and 5xx errors
+      - match:
+          selector: '{job="nginx"} |~ "\" [45]\\d{2} "'
+          stages:
+            - labels:
+                error_type: http_error
+
+  - job_name: nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: error
+          host: seamolec-server
+          __path__: /var/log/nginx/error.log
+
+  # ========================================
+  # 6. APACHE LOGS (jika ada)
+  # ========================================
+  - job_name: apache-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: apache
+          log_type: access
+          host: seamolec-server
+          __path__: /var/log/apache2/access.log
+
+  - job_name: apache-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: apache
+          log_type: error
+          host: seamolec-server
+          __path__: /var/log/apache2/error.log
+
+  # ========================================
+  # 7. MySQL/MariaDB LOGS (jika ada)
+  # ========================================
+  - job_name: mysql-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mysql
+          log_type: error
+          host: seamolec-server
+          __path__: /var/log/mysql/error.log
+
+  - job_name: mysql-slow
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mysql
+          log_type: slow_query
+          host: seamolec-server
+          __path__: /var/log/mysql/mysql-slow.log
+
+  # ========================================
+  # 8. PROMETHEUS LOGS (dari container)
+  # ========================================
+  - job_name: prometheus-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: prometheus
+          host: seamolec-server
+          service: monitoring
+          __path__: /var/lib/docker/containers/*prometheus*/*log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+      - output:
+          source: output
+
+  # ========================================
+  # 9. GRAFANA LOGS (dari container)
+  # ========================================
+  - job_name: grafana-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: grafana
+          host: seamolec-server
+          service: monitoring
+          __path__: /var/lib/docker/containers/*grafana*/*log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+      - output:
+          source: output
+
+  # ========================================
+  # 10. SNMP EXPORTER LOGS (dari container)
+  # ========================================
+  - job_name: snmp-exporter-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: snmp-exporter
+          host: seamolec-server
+          service: monitoring
+          __path__: /var/lib/docker/containers/*snmp*/*log
+    pipeline_stages:
+      - json:
+          expressions:
+            output: log
+      - output:
+          source: output
+
+  # ========================================
+  # 11. CUSTOM APPLICATION LOGS (contoh)
+  # ========================================
+  - job_name: app-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: application
+          app: seamolec-app
+          host: seamolec-server
+          __path__: /var/log/seamolec/*log
+    pipeline_stages:
+      # Parse timestamp dan level
+      - regex:
+          expression: '^\[(?P<timestamp>.*?)\] (?P<level>\w+):\s+(?P<message>.*)'
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05'
