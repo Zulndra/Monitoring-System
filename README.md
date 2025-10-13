@@ -147,7 +147,7 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /root/monitoring # your project directory
+            cd /root/monitoring 
             git pull origin main
             docker compose pull
             docker compose up -d --build
