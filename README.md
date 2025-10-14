@@ -186,8 +186,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             echo "🩺 Verifying application health..."
-            # Ganti URL di bawah sesuai domain/IP dan port kamu
-            curl -f http://localhost:80 || curl -f http://127.0.0.1:80
+            curl -f http://98.87.83.12:3000 || curl -f http://98.87.83.12:3000
             echo "✅ Application is responding correctly."
 
 ```
