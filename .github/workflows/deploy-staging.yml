@@ -12,7 +12,7 @@ jobs:
     environment:
       name: staging
       url: http://98.87.60.46
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,22 +24,63 @@ jobs:
           username: ${{ secrets.STAGING_USERNAME }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
+            set -e  # Exit on error
+            
             cd ${{ secrets.STAGING_PROJECT_PATH }}
-
+            
+            echo "📥 Pulling latest changes..."
             git fetch origin
             git checkout staged
             git pull origin staged
-
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d
-
+            
+            echo "🔄 Restarting Docker services..."
+            # Stop containers
+            docker compose down || echo "No containers to stop"
+            
+            # Pull latest images
+            docker compose pull || echo "Skip pull images"
+            
+            # Start containers
+            docker compose up -d
+            
+            echo "⏳ Waiting for containers to be ready..."
+            sleep 5
+            
+            echo "📊 Container status:"
+            docker compose ps
+            
             echo "✅ Staging deployment completed!"
 
+      - name: Verify Deployment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ secrets.STAGING_PROJECT_PATH }}
+            
+            # Check if containers are running
+            RUNNING=$(docker compose ps --format json | grep -c "running" || echo "0")
+            
+            if [ "$RUNNING" -gt 0 ]; then
+              echo "✅ $RUNNING container(s) running"
+            else
+              echo "❌ No containers running!"
+              docker compose logs --tail=50
+              exit 1
+            fi
+
       - name: Deployment Summary
+        if: always()
         run: |
           echo "### 🚀 Staging Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Server**: 98.87.60.46" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: staged" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
