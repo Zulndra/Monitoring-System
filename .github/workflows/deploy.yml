@@ -3,7 +3,7 @@ name: Auto Deploy to Server
 on:
   push:
     branches:
-      - main  
+      - main
 
 jobs:
   deploy:
@@ -13,6 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Test SSH Connection
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "✅ SSH connection successful!"
+            hostname
+            whoami
+            uptime
+
       - name: Deploy to Server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -20,7 +32,30 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /home/ubuntu/monitoring 
-            sudo git pull origin main
+            echo "🚀 Starting deployment..."
+            cd /home/ubuntu/monitoring || exit 1
+
+            echo "📦 Pulling latest code..."
+            sudo git fetch origin main
+            sudo git reset --hard origin/main
+
+            echo "🧱 Rebuilding Docker containers..."
             sudo docker compose down
             sudo docker compose up -d --build
+
+            echo "🔍 Checking container status..."
+            sudo docker ps
+
+            echo "✅ Deployment finished successfully!"
+
+      - name: Verify Deployment Health
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "🩺 Verifying application health..."
+            # Ganti URL di bawah sesuai domain/IP dan port kamu
+            curl -f http://localhost:80 || curl -f http://127.0.0.1:80
+            echo "✅ Application is responding correctly."
