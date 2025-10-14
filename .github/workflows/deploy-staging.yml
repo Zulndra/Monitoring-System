@@ -28,6 +28,8 @@ jobs:
             
             cd ${{ secrets.STAGING_PROJECT_PATH }}
             
+            git config --global --add safe.directory ${{ secrets.STAGING_PROJECT_PATH }
+
             echo "📥 Pulling latest changes..."
             git fetch origin
             git checkout staged

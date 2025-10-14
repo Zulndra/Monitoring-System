@@ -43,6 +43,8 @@ jobs:
             set -e  # Exit on error
             
             cd ${{ secrets.PROJECT_PATH }}
+
+            git config --global --add safe.directory ${{ secrets.PROJECT_PATH }}
             
             echo "📥 Pulling latest changes..."
             git fetch origin
