@@ -1,3 +1,6 @@
+## Test Auto Deployment
+Testing GitHub Actions - $(date)
+
 # Monitoring System
 
 A full monitoring system using Docker, Prometheus, Grafana, and SNMP Exporter. Everything runs directly with Docker Compose.
