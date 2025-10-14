@@ -238,3 +238,4 @@ ssh ubuntu@<your-server-ip>
 * Auto deployment only triggers on pushes to the `main` branch.
 
 With these steps, the monitoring system is ready to use immediately without any additional configuration, and will automatically update whenever you push changes to GitHub!
+# Test permission fixed
