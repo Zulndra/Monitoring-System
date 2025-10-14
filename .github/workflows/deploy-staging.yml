@@ -1,0 +1,45 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staged
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: http://98.87.60.46
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ secrets.STAGING_PROJECT_PATH }}
+
+            git fetch origin
+            git checkout staged
+            git pull origin staged
+
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
+
+            echo "✅ Staging deployment completed!"
+
+      - name: Deployment Summary
+        run: |
+          echo "### 🚀 Staging Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server**: 98.87.60.46" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: staged" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
