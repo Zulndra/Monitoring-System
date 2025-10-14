@@ -30,9 +30,9 @@ jobs:
             git checkout staged
             git pull origin staged
 
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d
+            docker compose down
+            docker compose pull
+            docker compose up -d
 
             echo "✅ Staging deployment completed!"
 

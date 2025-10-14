@@ -48,9 +48,9 @@ jobs:
             git pull origin main
             
             # Restart services
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d
+            docker compose down
+            docker compose pull
+            docker compose up -d
             
             echo "✅ Production deployment completed!"
 
