@@ -165,11 +165,23 @@ jobs:
               docker compose logs --tail=30
             fi
 
-      - name: Deployment Summary
+     - name: Deployment Summary
+        if: always()
         run: |
           echo "### 🚀 Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Server**: 98.87.83.12" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: main" >> $GITHUB_STEP_SUMMARY
           echo "- **Backup**: Created ✅" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Service Health:" >> $GITHUB_STEP_SUMMARY
+          echo "- Grafana: http://98.87.83.12:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- Prometheus: http://98.87.83.12:9090" >> $GITHUB_STEP_SUMMARY
+          echo "- SNMP Exporter: http://98.87.83.12:9116" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "- **Status**: ✅ All systems operational" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ❌ Deployment failed - check logs" >> $GITHUB_STEP_SUMMARY
+          fi
