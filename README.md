@@ -36,6 +36,18 @@ docker compose ps
 
 **Required Ports:** 3000, 9090, 9116
 
+### Import Grafana Dashboard
+
+1. Open Grafana in browser: `http://<server-ip>:3000`
+2. Login with default credentials (admin/admin)
+3. Go to **Menu** → **Dashboards** → **Import**
+4. Click **Upload JSON file**
+5. Select the `.json` file from `grafana/templates/` folder in this repository
+6. Select **Prometheus** as the data source
+7. Click **Import**
+
+Your monitoring dashboard is now ready to use.
+
 ---
 
 ## Automated Deployment
@@ -121,7 +133,26 @@ Copy everything including `-----BEGIN` and `-----END` lines.
 
 ## Daily Usage
 
-### Deploy to Staging
+### Option 1: Using Helper Script (Recommended)
+```bash
+# Make script executable (first time only)
+chmod +x deploy.sh
+
+# Run the helper script
+./deploy.sh
+```
+
+The script provides an interactive menu:
+1. Push to Staging (staged branch)
+2. Promote to Production (create PR)
+3. Check Deployment Status
+4. Sync staged from main
+5. Show Recent Commits
+6. Compare staged vs main
+
+### Option 2: Manual Git Commands
+
+**Deploy to Staging:**
 ```bash
 # Work on staging branch
 git checkout staged
@@ -137,7 +168,7 @@ git push origin staged
 
 **Result:** Automatically deploys to staging server. Check **Actions** tab to monitor progress.
 
-### Deploy to Production
+**Deploy to Production:**
 
 After testing in staging:
 ```bash
@@ -155,12 +186,23 @@ gh pr create --base main --head staged --title "Deploy to Production"
 
 ## Health Check
 
-Run manual health check:
+### Automated Health Check Script
 ```bash
+# Make script executable (first time only)
+chmod +x health-check.sh
+
+# Run health check
 ./health-check.sh
 ```
 
-Or check individual services:
+This will check:
+- Container status
+- Service endpoints (HTTP health checks)
+- Recent error logs
+- Resource usage (CPU, Memory)
+- Disk usage
+
+### Manual Service Check
 ```bash
 # Grafana
 curl http://localhost:3000/api/health
@@ -226,8 +268,11 @@ git checkout main             # Switch to production
 git pull origin staged        # Update staging
 git pull origin main          # Update production
 
-# Health check
+# Helper Scripts
+./deploy.sh                   # Interactive deployment helper
 ./health-check.sh             # Run health check
+
+# Monitoring
 docker stats                  # Resource usage
 ```
 
@@ -237,10 +282,14 @@ docker stats                  # Resource usage
 ```
 Monitoring-System/
 ├── .github/workflows/        # GitHub Actions workflows
+│   ├── deploy-staging.yml
+│   └── deploy-production.yml
 ├── prometheus/               # Prometheus configuration
-├── grafana/                  # Grafana dashboards
+├── grafana/
+│   └── templates/           # Grafana dashboard templates (.json)
 ├── snmp-exporter/           # SNMP Exporter config
 ├── docker-compose.yml       # Docker services
+├── deploy.sh                # Deployment helper script
 └── health-check.sh          # Health check script
 ```
 
@@ -250,8 +299,19 @@ Monitoring-System/
 
 1. **Clone** the repository
 2. **Setup** GitHub Secrets for your servers
-3. **Push to `staged`** branch for automatic deployment to staging
-4. **Create PR to `main`** for automatic deployment to production
-5. **Monitor** via GitHub Actions and Grafana dashboards
+3. **Import Grafana dashboard** from grafana/templates/ folder
+4. **Use `./deploy.sh`** for easy deployment workflow
+5. **Push to `staged`** branch for automatic deployment to staging
+6. **Create PR to `main`** for automatic deployment to production
+7. **Run `./health-check.sh`** to verify system health
+8. **Monitor** via GitHub Actions and Grafana dashboards
 
 Your monitoring system with automated deployment is ready.
+
+
+---
+
+### 👤 Author
+**Ahmadino Zulendra**  
+📧 Email: ahmadinozulendra@example.com  
+🌐 GitHub: [Zulndra](https://github.com/Zulndra)
