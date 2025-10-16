@@ -54,7 +54,7 @@ jobs:
             
             echo "✅ Production deployment completed!"
 
-- name: Health Check
+      - name: Health Check
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOST }}
