@@ -35,6 +35,73 @@ jobs:
             sudo docker compose down
             sudo docker compose pull
             sudo docker compose up -d
+
+      - name: Verify Deployment
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ secrets.STAGING_PROJECT_PATH }}
+            
+            # Check if containers are running
+            RUNNING=$(docker compose ps --format json | grep -c "running" || echo "0")
+            
+            if [ "$RUNNING" -gt 0 ]; then
+              echo "✅ $RUNNING container(s) running"
+            else
+              echo "❌ No containers running!"
+              docker compose logs --tail=50
+              exit 1
+            fi
+
+      - name: Health Check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ secrets.STAGING_PROJECT_PATH }}
+            
+            echo "🏥 Running health checks on staging..."
+            echo ""
+            
+            # Wait for services
+            echo "⏳ Waiting 30s for services to stabilize..."
+            sleep 30
+            
+            # Check Grafana
+            GRAFANA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || echo "000")
+            if [ "$GRAFANA_STATUS" = "200" ]; then
+              echo "✅ Grafana: Healthy (HTTP $GRAFANA_STATUS)"
+            else
+              echo "⚠️  Grafana: Unhealthy (HTTP $GRAFANA_STATUS)"
+            fi
+            
+            # Check Prometheus
+            PROM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy || echo "000")
+            if [ "$PROM_STATUS" = "200" ]; then
+              echo "✅ Prometheus: Healthy (HTTP $PROM_STATUS)"
+            else
+              echo "⚠️  Prometheus: Unhealthy (HTTP $PROM_STATUS)"
+            fi
+            
+            # Check SNMP Exporter
+            SNMP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9116/metrics || echo "000")
+            if [ "$SNMP_STATUS" = "200" ]; then
+              echo "✅ SNMP Exporter: Healthy (HTTP $SNMP_STATUS)"
+            else
+              echo "⚠️  SNMP Exporter: Unhealthy (HTTP $SNMP_STATUS)"
+            fi
+            
+            echo ""
+            echo "📊 Container stats:"
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+            
+            echo ""
+            echo "✅ Health check completed!"
             
             echo "✅ Staging deployment completed!"
 
