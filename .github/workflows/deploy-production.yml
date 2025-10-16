@@ -165,7 +165,7 @@ jobs:
               docker compose logs --tail=30
             fi
 
-     - name: Deployment Summary
+      - name: Deployment Summary
         if: always()
         run: |
           echo "### 🚀 Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
