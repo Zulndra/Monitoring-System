@@ -54,10 +54,116 @@ jobs:
             
             echo "✅ Production deployment completed!"
 
-      - name: Health Check
-        run: |
-          sleep 10
-          echo "⚠️ Please manually verify the production server"
+- name: Health Check
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            echo "🏥 Starting comprehensive health check..."
+            echo ""
+            
+            # 1. Check container status
+            echo "📦 Checking container status..."
+            CONTAINERS=$(docker compose ps --format json)
+            RUNNING=$(echo "$CONTAINERS" | grep -c '"State":"running"' || echo "0")
+            TOTAL=$(echo "$CONTAINERS" | wc -l)
+            
+            echo "   Running: $RUNNING/$TOTAL containers"
+            
+            if [ "$RUNNING" -eq 0 ]; then
+              echo "   ❌ No containers running!"
+              docker compose ps
+              exit 1
+            fi
+            
+            echo ""
+            
+            # 2. Check for errors in logs (last 50 lines)
+            echo "📋 Checking for critical errors in logs..."
+            ERROR_COUNT=$(docker compose logs --tail=50 2>&1 | grep -iE "error|fatal|panic|critical" | grep -v "level=info" | wc -l || echo "0")
+            
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "   ⚠️  Found $ERROR_COUNT error messages in logs"
+              echo "   Recent errors:"
+              docker compose logs --tail=50 2>&1 | grep -iE "error|fatal|panic" | tail -5
+            else
+              echo "   ✅ No critical errors in recent logs"
+            fi
+            
+            echo ""
+            
+            # 3. Wait for services to be ready
+            echo "⏳ Waiting for services to be ready (30s)..."
+            sleep 30
+            
+            # 4. Check Grafana
+            echo "🔍 Checking Grafana..."
+            if curl -f -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health | grep -q "200"; then
+              echo "   ✅ Grafana is healthy (HTTP 200)"
+            else
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || echo "000")
+              echo "   ❌ Grafana health check failed (HTTP $HTTP_CODE)"
+            fi
+            
+            # 5. Check Prometheus
+            echo "🔍 Checking Prometheus..."
+            if curl -f -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy | grep -q "200"; then
+              echo "   ✅ Prometheus is healthy (HTTP 200)"
+            else
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy || echo "000")
+              echo "   ❌ Prometheus health check failed (HTTP $HTTP_CODE)"
+            fi
+            
+            # 6. Check SNMP Exporter
+            echo "🔍 Checking SNMP Exporter..."
+            if curl -f -s -o /dev/null -w "%{http_code}" http://localhost:9116/metrics | grep -q "200"; then
+              echo "   ✅ SNMP Exporter is healthy (HTTP 200)"
+            else
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9116/metrics || echo "000")
+              echo "   ❌ SNMP Exporter health check failed (HTTP $HTTP_CODE)"
+            fi
+            
+            echo ""
+            
+            # 7. Check resource usage
+            echo "💻 Checking resource usage..."
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | head -10
+            
+            echo ""
+            
+            # 8. Final summary
+            echo "📊 Deployment Health Summary:"
+            echo "   • Containers: $RUNNING/$TOTAL running"
+            echo "   • Grafana: $(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || echo "DOWN")"
+            echo "   • Prometheus: $(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy || echo "DOWN")"
+            echo "   • SNMP Exporter: $(curl -s -o /dev/null -w "%{http_code}" http://localhost:9116/metrics || echo "DOWN")"
+            
+            echo ""
+            echo "✅ Health check completed!"
+
+      - name: Send Notification
+        if: always()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            if [ ${{ job.status }} == 'success' ]; then
+              echo "🎉 Production deployment successful and healthy!"
+            else
+              echo "❌ Production deployment failed or unhealthy!"
+              echo "📋 Last 30 lines of logs:"
+              docker compose logs --tail=30
+            fi
 
       - name: Deployment Summary
         run: |
