@@ -309,9 +309,7 @@ Monitoring-System/
 Your monitoring system with automated deployment is ready.
 
 
----
+## 🧑‍💻 Maintainer
+This project is maintained by **Ahmadino Zulendra**.  
+For inquiries, please contact via GitHub: [@Zulndra](https://github.com/Zulndra)
 
-### 👤 Author
-**Ahmadino Zulendra**  
-📧 Email: ahmadinozulendra@example.com  
-🌐 GitHub: [Zulndra](https://github.com/Zulndra)
